@@ -10,6 +10,17 @@ import (
 // Provider will create the necessary terraform provider to talk to the Bitbucket APIs you should
 // specify a USERNAME and PASSWORD
 func Provider() terraform.ResourceProvider {
+	b := 1
+	if b == 0 {
+		doOneMoreThing()
+	} else {
+		doOneMoreThing()
+	}
+
+	if false {
+
+	}
+
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"username": {
