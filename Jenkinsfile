@@ -12,6 +12,7 @@ pipeline{
                 echo "Cloning the git repository"
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Building the repository"
+                sh 'go build'
             }
             post{
                 always{
