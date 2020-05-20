@@ -11,6 +11,9 @@ pipeline{
             steps{
                 echo "Cloning the git repository"
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
+                echo "Content in working directory"
+                sh "${pwd()}"
+                sh "ls -la ${pwd()}"
                 echo "Building the repository"
                 sh 'go build'
             }
