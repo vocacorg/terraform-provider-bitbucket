@@ -7,14 +7,12 @@ pipeline{
         GO111MODULE = 'on'
     }
     stages{
-        stage("Clone and Compile"){
+        stage("Clone"){
             steps{
                 echo "Cloning the git repository"
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Content in working directory"
                 sh "ls -la ."
-                echo "Building the repository"
-                sh 'go build'
             }
             post{
                 always{
@@ -26,6 +24,18 @@ pipeline{
                 failure{
                     echo "========A execution failed========"
                 }
+            }
+        }
+        stage("Code Quality"){
+            steps{
+                echo "Checking code quality"
+                sh "sonar-scanner -Dsonar.projectKey=terraform-provider-bitbucket -Dsonar.login=c3fb72157414d33dccb005afebae09c50858c879"
+            }
+        }
+        stage("Build"){
+            steps{
+                echo "Building the repository"
+                sh 'go build'
             }
         }
     }
