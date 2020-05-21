@@ -27,9 +27,17 @@ pipeline{
             }
         }
         stage("Code Quality"){
+            environment {
+                scannerHome = tool 'SonarQubeScanner'
+            }
             steps{
                 echo "Checking code quality"
-                sh "sonar-scanner -h"
+                withSonarQubeEnv('sonarqube') {
+                    sh "${scannerHome}/bin/sonar-scanner"
+                }
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
             post{
                 always{
