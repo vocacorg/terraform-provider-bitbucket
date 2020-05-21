@@ -1,6 +1,7 @@
 package bitbucket
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -57,4 +58,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	}
 
 	return client, nil
+}
+
+func doOneMoreThing() {
+	fmt.Println("Hello")
 }
