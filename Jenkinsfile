@@ -31,11 +31,33 @@ pipeline{
                 echo "Checking code quality"
                 sh "sonar-scanner -Dsonar.projectKey=terraform-provider-bitbucket -Dsonar.login=c3fb72157414d33dccb005afebae09c50858c879"
             }
+            post{
+                always{
+                    echo "========always========"
+                }
+                success{
+                    echo "========A executed successfully========"
+                }
+                failure{
+                    echo "========A execution failed========"
+                }
+            }
         }
         stage("Build"){
             steps{
                 echo "Building the repository"
                 sh 'go build'
+            }
+            post{
+                always{
+                    echo "========always========"
+                }
+                success{
+                    echo "========A executed successfully========"
+                }
+                failure{
+                    echo "========A execution failed========"
+                }
             }
         }
     }
