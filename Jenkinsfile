@@ -12,8 +12,8 @@ pipeline{
                 echo "Cloning the git repository"
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Content in working directory"
-                sh "ls -la ."
-                echo "Building the repository"
+                lists = sh(script: "ls -la .", returnStdout: true)
+                echo "Building the repository: ${lists}"
                 sh 'go build'
             }
             post{
