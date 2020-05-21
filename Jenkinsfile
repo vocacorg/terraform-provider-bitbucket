@@ -29,7 +29,7 @@ pipeline{
         stage("Code Quality"){
             steps{
                 echo "Checking code quality"
-                sh "sonar-scanner -Dsonar.projectKey=terraform-provider-bitbucket -Dsonar.login=c3fb72157414d33dccb005afebae09c50858c879"
+                sh "sonar-scanner -h"
             }
             post{
                 always{
