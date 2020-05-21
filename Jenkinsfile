@@ -13,7 +13,7 @@ pipeline{
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Content in working directory"
                 lists = sh(script: "ls -la .", returnStdout: true)
-                echo "Building the repository: ${lists}"
+                echo "Building a new repository: ${lists}"
                 sh 'go build'
             }
             post{
