@@ -9,7 +9,6 @@ pipeline{
     stages{
         stage("Clone and Compile"){
             steps{
-                sh "rm -fR ."
                 echo "Cloning the git repository"
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Content in working directory"
