@@ -104,7 +104,6 @@ pipeline{
                 
                 echo "Running terraform files"
                 sh 'terraform --version'
-                sh 'terraform init'
                 echo "Initialised terraform"
                 
             }
