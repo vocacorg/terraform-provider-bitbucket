@@ -62,8 +62,7 @@ pipeline{
                     keepAll: true,
                     reportDir: 'coverage',
                     reportFiles: 'index.html',
-                    reportName: 'Code Coverage',
-                    reportTitles: 'Go Language Coverage Report'])
+                    reportName: 'Code Coverage'])
             }
             post{
                 always{

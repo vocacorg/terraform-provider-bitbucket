@@ -1,0 +1,1716 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/client.go (0.0%)</option>
+				
+				<option value="file1">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/data_user.go (4.8%)</option>
+				
+				<option value="file2">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/provider.go (66.7%)</option>
+				
+				<option value="file3">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_branch_restriction.go (1.6%)</option>
+				
+				<option value="file4">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_default_reviewers.go (2.4%)</option>
+				
+				<option value="file5">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_hook.go (1.5%)</option>
+				
+				<option value="file6">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_project.go (1.5%)</option>
+				
+				<option value="file7">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_repository.go (0.9%)</option>
+				
+				<option value="file8">github.com/terraform-providers/terraform-provider-bitbucket/bitbucket/resource_repository_variable.go (1.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io"
+        "io/ioutil"
+        "log"
+        "net/http"
+)
+
+// Error represents a error from the bitbucket api.
+type Error struct {
+        APIError struct {
+                Message string `json:"message,omitempty"`
+        } `json:"error,omitempty"`
+        Type       string `json:"type,omitempty"`
+        StatusCode int
+        Endpoint   string
+}
+
+func (e Error) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("API Error: %d %s %s", e.StatusCode, e.Endpoint, e.APIError.Message)
+}</span>
+
+const (
+        // BitbucketEndpoint is the fqdn used to talk to bitbucket
+        BitbucketEndpoint string = "https://api.bitbucket.org/"
+)
+
+// Client is the base internal Client to talk to bitbuckets API. This should be a username and password
+// the password should be a app-password.
+type Client struct {
+        Username   string
+        Password   string
+        HTTPClient *http.Client
+}
+
+// Do Will just call the bitbucket api but also add auth to it and some extra headers
+func (c *Client) Do(method, endpoint string, payload *bytes.Buffer) (*http.Response, error) <span class="cov0" title="0">{
+
+        absoluteendpoint := BitbucketEndpoint + endpoint
+        log.Printf("[DEBUG] Sending request to %s %s", method, absoluteendpoint)
+
+        var bodyreader io.Reader
+
+        if payload != nil </span><span class="cov0" title="0">{
+                log.Printf("[DEBUG] With payload %s", payload.String())
+                bodyreader = payload
+        }</span>
+
+        <span class="cov0" title="0">req, err := http.NewRequest(method, absoluteendpoint, bodyreader)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">req.SetBasicAuth(c.Username, c.Password)
+
+        if payload != nil </span><span class="cov0" title="0">{
+                // Can cause bad request when putting default reviews if set.
+                req.Header.Add("Content-Type", "application/json")
+        }</span>
+
+        <span class="cov0" title="0">req.Close = true
+
+        resp, err := c.HTTPClient.Do(req)
+        log.Printf("[DEBUG] Resp: %v Err: %v", resp, err)
+        if resp.StatusCode &gt;= 400 || resp.StatusCode &lt; 200 </span><span class="cov0" title="0">{
+                apiError := Error{
+                        StatusCode: resp.StatusCode,
+                        Endpoint:   endpoint,
+                }
+
+                body, err := ioutil.ReadAll(resp.Body)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">log.Printf("[DEBUG] Resp Body: %s", string(body))
+
+                err = json.Unmarshal(body, &amp;apiError)
+                if err != nil </span><span class="cov0" title="0">{
+                        apiError.APIError.Message = string(body)
+                }</span>
+
+                <span class="cov0" title="0">return resp, error(apiError)</span>
+
+        }
+        <span class="cov0" title="0">return resp, err</span>
+}
+
+// Get is just a helper method to do but with a GET verb
+func (c *Client) Get(endpoint string) (*http.Response, error) <span class="cov0" title="0">{
+        return c.Do("GET", endpoint, nil)
+}</span>
+
+// Post is just a helper method to do but with a POST verb
+func (c *Client) Post(endpoint string, jsonpayload *bytes.Buffer) (*http.Response, error) <span class="cov0" title="0">{
+        return c.Do("POST", endpoint, jsonpayload)
+}</span>
+
+// Put is just a helper method to do but with a PUT verb
+func (c *Client) Put(endpoint string, jsonpayload *bytes.Buffer) (*http.Response, error) <span class="cov0" title="0">{
+        return c.Do("PUT", endpoint, jsonpayload)
+}</span>
+
+// PutOnly is just a helper method to do but with a PUT verb and a nil body
+func (c *Client) PutOnly(endpoint string) (*http.Response, error) <span class="cov0" title="0">{
+        return c.Do("PUT", endpoint, nil)
+}</span>
+
+// Delete is just a helper to Do but with a DELETE verb
+func (c *Client) Delete(endpoint string) (*http.Response, error) <span class="cov0" title="0">{
+        return c.Do("DELETE", endpoint, nil)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package bitbucket
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/http"
+
+        "github.com/hashicorp/terraform/helper/schema"
+)
+
+type apiUser struct {
+        DisplayName string `json:"display_name"`
+        UUID        string `json:"uuid"`
+        Nickname    string `json:"nickname"`
+}
+
+func dataUser() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Read: dataReadUser,
+
+                Schema: map[string]*schema.Schema{
+                        "username": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "display_name": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "uuid": {
+                                Type:     schema.TypeString,
+                                Computed: true,
+                        },
+                        "nickname": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                },
+        }
+}</span>
+
+func dataReadUser(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        c := m.(*Client)
+
+        username := d.Get("username")
+        if username == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("username must not be blank")
+        }</span>
+
+        <span class="cov0" title="0">r, err := c.Get(fmt.Sprintf("2.0/users/%s", username))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if r.StatusCode == http.StatusNotFound </span><span class="cov0" title="0">{
+                return fmt.Errorf("user not found")
+        }</span>
+
+        <span class="cov0" title="0">if r.StatusCode &gt;= http.StatusInternalServerError </span><span class="cov0" title="0">{
+                return fmt.Errorf("internal server error fetching user")
+        }</span>
+
+        <span class="cov0" title="0">var u apiUser
+
+        err = json.NewDecoder(r.Body).Decode(&amp;u)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">d.SetId(u.UUID)
+        d.Set("uuid", u.UUID)
+        d.Set("nickname", u.Nickname)
+        d.Set("display_name", u.DisplayName)
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package bitbucket
+
+import (
+        "fmt"
+        "net/http"
+
+        "github.com/hashicorp/terraform/helper/schema"
+        "github.com/hashicorp/terraform/terraform"
+)
+
+// Provider will create the necessary terraform provider to talk to the Bitbucket APIs you should
+// specify a USERNAME and PASSWORD
+func Provider() terraform.ResourceProvider <span class="cov8" title="1">{
+        b := 1
+        if b == 0 </span><span class="cov0" title="0">{
+                doOneMoreThing()
+        }</span> else<span class="cov8" title="1"> {
+                doOneMoreThing()
+        }</span>
+
+        <span class="cov8" title="1">if false </span>{<span class="cov0" title="0">
+
+        }</span>
+
+        <span class="cov8" title="1">return &amp;schema.Provider{
+                Schema: map[string]*schema.Schema{
+                        "username": {
+                                Required:    true,
+                                Type:        schema.TypeString,
+                                DefaultFunc: schema.EnvDefaultFunc("BITBUCKET_USERNAME", nil),
+                        },
+                        "password": {
+                                Type:        schema.TypeString,
+                                Required:    true,
+                                DefaultFunc: schema.EnvDefaultFunc("BITBUCKET_PASSWORD", nil),
+                        },
+                },
+                ConfigureFunc: providerConfigure,
+                ResourcesMap: map[string]*schema.Resource{
+                        "bitbucket_hook":                resourceHook(),
+                        "bitbucket_default_reviewers":   resourceDefaultReviewers(),
+                        "bitbucket_repository":          resourceRepository(),
+                        "bitbucket_repository_variable": resourceRepositoryVariable(),
+                        "bitbucket_project":             resourceProject(),
+                        "bitbucket_branch_restriction":  resourceBranchRestriction(),
+                },
+                DataSourcesMap: map[string]*schema.Resource{
+                        "bitbucket_user": dataUser(),
+                },
+        }</span>
+}
+
+func providerConfigure(d *schema.ResourceData) (interface{}, error) <span class="cov0" title="0">{
+        client := &amp;Client{
+                Username:   d.Get("username").(string),
+                Password:   d.Get("password").(string),
+                HTTPClient: &amp;http.Client{},
+        }
+
+        return client, nil
+}</span>
+
+func doOneMoreThing() <span class="cov8" title="1">{
+        fmt.Println("Hello")
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "github.com/hashicorp/terraform/helper/schema"
+        "github.com/hashicorp/terraform/helper/validation"
+        "io/ioutil"
+        "log"
+        "net/url"
+)
+
+// BranchRestriction is the data we need to send to create a new branch restriction for the repository
+type BranchRestriction struct {
+        ID      int     `json:"id,omitempty"`
+        Kind    string  `json:"kind,omitempty"`
+        Pattern string  `json:"pattern,omitempty"`
+        Value   int     `json:"value,omitempty"`
+        Users   []User  `json:"users,omitempty"`
+        Groups  []Group `json:"groups,omitempty"`
+}
+
+// User is just the user struct we want to use for BranchRestrictions
+type User struct {
+        Username string `json:"username,omitempty"`
+}
+
+// Group is the group we want to add to a branch restriction
+type Group struct {
+        Slug  string `json:"slug,omitempty"`
+        Owner User   `json:"owner,omitempty"`
+}
+
+func resourceBranchRestriction() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceBranchRestrictionsCreate,
+                Read:   resourceBranchRestrictionsRead,
+                Update: resourceBranchRestrictionsUpdate,
+                Delete: resourceBranchRestrictionsDelete,
+                Exists: resourceBranchRestrictionsExists,
+
+                Schema: map[string]*schema.Schema{
+                        "owner": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "repository": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "kind": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ValidateFunc: validation.StringInSlice([]string{
+                                        "require_tasks_to_be_completed",
+                                        "require_passing_builds_to_merge",
+                                        "force",
+                                        "require_all_dependencies_merged",
+                                        "push",
+                                        "require_approvals_to_merge",
+                                        "enforce_merge_checks",
+                                        "restrict_merges",
+                                        "reset_pullrequest_approvals_on_change",
+                                        "delete",
+                                },
+                                        false),
+                        },
+                        "pattern": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "users": {
+                                Type:     schema.TypeSet,
+                                Elem:     &amp;schema.Schema{Type: schema.TypeString},
+                                Optional: true,
+                                Set:      schema.HashString,
+                        },
+                        "groups": {
+                                Type: schema.TypeSet,
+                                Elem: &amp;schema.Resource{
+                                        Schema: map[string]*schema.Schema{
+                                                "owner": {
+                                                        Type:     schema.TypeString,
+                                                        Required: true,
+                                                },
+                                                "slug": {
+                                                        Type:     schema.TypeString,
+                                                        Required: true,
+                                                },
+                                        },
+                                },
+                                Optional: true,
+                        },
+
+                        "value": {
+                                Type:     schema.TypeInt,
+                                Optional: true,
+                        },
+                },
+        }
+}</span>
+
+func createBranchRestriction(d *schema.ResourceData) *BranchRestriction <span class="cov0" title="0">{
+
+        users := make([]User, 0, len(d.Get("users").(*schema.Set).List()))
+
+        for _, item := range d.Get("users").(*schema.Set).List() </span><span class="cov0" title="0">{
+                users = append(users, User{Username: item.(string)})
+        }</span>
+
+        <span class="cov0" title="0">groups := make([]Group, 0, len(d.Get("groups").(*schema.Set).List()))
+
+        for _, item := range d.Get("groups").(*schema.Set).List() </span><span class="cov0" title="0">{
+                m := item.(map[string]interface{})
+                groups = append(groups, Group{Owner: User{Username: m["owner"].(string)}, Slug: m["slug"].(string)})
+        }</span>
+
+        <span class="cov0" title="0">return &amp;BranchRestriction{
+                Kind:    d.Get("kind").(string),
+                Pattern: d.Get("pattern").(string),
+                Value:   d.Get("value").(int),
+                Users:   users,
+                Groups:  groups,
+        }</span>
+}
+
+func resourceBranchRestrictionsCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        branchRestriction := createBranchRestriction(d)
+
+        bytedata, err := json.Marshal(branchRestriction)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">branchRestrictionReq, err := client.Post(fmt.Sprintf("2.0/repositories/%s/%s/branch-restrictions",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+        ), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">body, readerr := ioutil.ReadAll(branchRestrictionReq.Body)
+        if readerr != nil </span><span class="cov0" title="0">{
+                return readerr
+        }</span>
+
+        <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;branchRestriction)
+        if decodeerr != nil </span><span class="cov0" title="0">{
+                return decodeerr
+        }</span>
+
+        <span class="cov0" title="0">d.SetId(string(fmt.Sprintf("%v", branchRestriction.ID)))
+
+        return resourceBranchRestrictionsRead(d, m)</span>
+}
+
+func resourceBranchRestrictionsRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        branchRestrictionsReq, _ := client.Get(fmt.Sprintf("2.0/repositories/%s/%s/branch-restrictions/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ))
+
+        log.Printf("ID: %s", url.PathEscape(d.Id()))
+
+        if branchRestrictionsReq.StatusCode == 200 </span><span class="cov0" title="0">{
+                var branchRestriction BranchRestriction
+                body, readerr := ioutil.ReadAll(branchRestrictionsReq.Body)
+                if readerr != nil </span><span class="cov0" title="0">{
+                        return readerr
+                }</span>
+
+                <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;branchRestriction)
+                if decodeerr != nil </span><span class="cov0" title="0">{
+                        return decodeerr
+                }</span>
+
+                <span class="cov0" title="0">d.SetId(string(fmt.Sprintf("%v", branchRestriction.ID)))
+                d.Set("kind", branchRestriction.Kind)
+                d.Set("pattern", branchRestriction.Pattern)
+                d.Set("value", branchRestriction.Value)
+                d.Set("users", branchRestriction.Users)
+                d.Set("groups", branchRestriction.Groups)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func resourceBranchRestrictionsUpdate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        branchRestriction := createBranchRestriction(d)
+        payload, err := json.Marshal(branchRestriction)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Put(fmt.Sprintf("2.0/repositories/%s/%s/branch-restrictions/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ), bytes.NewBuffer(payload))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return resourceBranchRestrictionsRead(d, m)</span>
+}
+
+func resourceBranchRestrictionsDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        _, err := client.Delete(fmt.Sprintf("2.0/repositories/%s/%s/branch-restrictions/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ))
+
+        return err
+}</span>
+
+func resourceBranchRestrictionsExists(d *schema.ResourceData, m interface{}) (bool, error) <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        if v := d.Id(); v != "" </span><span class="cov0" title="0">{
+                branchRestrictionsReq, err := client.Get(fmt.Sprintf("2.0/repositories/%s/%s/branch-restrictions/%s",
+                        d.Get("owner").(string),
+                        d.Get("repository").(string),
+                        url.PathEscape(d.Id()),
+                ))
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(err)</span>
+                }
+
+                <span class="cov0" title="0">if branchRestrictionsReq.StatusCode != 200 </span><span class="cov0" title="0">{
+                        return false, err
+                }</span>
+
+                <span class="cov0" title="0">return true, nil</span>
+        }
+
+        <span class="cov0" title="0">return false, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package bitbucket
+
+import (
+        "encoding/json"
+        "fmt"
+
+        "github.com/hashicorp/terraform/helper/schema"
+)
+
+// Reviewer is teh default reviewer you want
+type Reviewer struct {
+        DisplayName string `json:"display_name,omitempty"`
+        UUID        string `json:"uuid,omitempty"`
+        Type        string `json:"type,omitempty"`
+}
+
+// PaginatedReviewers is a paginated list that the bitbucket api returns
+type PaginatedReviewers struct {
+        Values []Reviewer `json:"values,omitempty"`
+        Page   int        `json:"page,omitempty"`
+        Size   int        `json:"size,omitempty"`
+        Next   string     `json:"next,omitempty"`
+}
+
+func resourceDefaultReviewers() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceDefaultReviewersCreate,
+                Read:   resourceDefaultReviewersRead,
+                Delete: resourceDefaultReviewersDelete,
+
+                Schema: map[string]*schema.Schema{
+                        "owner": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "repository": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "reviewers": {
+                                Type:     schema.TypeSet,
+                                Elem:     &amp;schema.Schema{Type: schema.TypeString},
+                                Required: true,
+                                Set:      schema.HashString,
+                                ForceNew: true,
+                        },
+                },
+        }
+}</span>
+
+func resourceDefaultReviewersCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        for _, user := range d.Get("reviewers").(*schema.Set).List() </span><span class="cov0" title="0">{
+                reviewerResp, err := client.PutOnly(fmt.Sprintf("2.0/repositories/%s/%s/default-reviewers/%s",
+                        d.Get("owner").(string),
+                        d.Get("repository").(string),
+                        user,
+                ))
+
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if reviewerResp.StatusCode != 200 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("Failed to create reviewer %s got code %d", user.(string), reviewerResp.StatusCode)
+                }</span>
+
+                <span class="cov0" title="0">defer reviewerResp.Body.Close()</span>
+        }
+
+        <span class="cov0" title="0">d.SetId(fmt.Sprintf("%s/%s/reviewers", d.Get("owner").(string), d.Get("repository").(string)))
+        return resourceDefaultReviewersRead(d, m)</span>
+}
+
+func resourceDefaultReviewersRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        resourceURL := fmt.Sprintf("2.0/repositories/%s/%s/default-reviewers",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+        )
+
+        var reviewers PaginatedReviewers
+        var terraformReviewers []string
+
+        for </span><span class="cov0" title="0">{
+                reviewersResponse, err := client.Get(resourceURL)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">decoder := json.NewDecoder(reviewersResponse.Body)
+                err = decoder.Decode(&amp;reviewers)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">for _, reviewer := range reviewers.Values </span><span class="cov0" title="0">{
+                        terraformReviewers = append(terraformReviewers, reviewer.UUID)
+                }</span>
+
+                <span class="cov0" title="0">if reviewers.Next != "" </span><span class="cov0" title="0">{
+                        nextPage := reviewers.Page + 1
+                        resourceURL = fmt.Sprintf("2.0/repositories/%s/%s/default-reviewers?page=%d",
+                                d.Get("owner").(string),
+                                d.Get("repository").(string),
+                                nextPage,
+                        )
+                        reviewers = PaginatedReviewers{}
+                }</span> else<span class="cov0" title="0"> {
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">d.Set("reviewers", terraformReviewers)
+
+        return nil</span>
+}
+
+func resourceDefaultReviewersDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        for _, user := range d.Get("reviewers").(*schema.Set).List() </span><span class="cov0" title="0">{
+                resp, err := client.Delete(fmt.Sprintf("2.0/repositories/%s/%s/default-reviewers/%s",
+                        d.Get("owner").(string),
+                        d.Get("repository").(string),
+                        user.(string),
+                ))
+
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if resp.StatusCode != 204 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("[%d] Could not delete %s from default reviewer",
+                                resp.StatusCode,
+                                user.(string),
+                        )
+                }</span>
+                <span class="cov0" title="0">defer resp.Body.Close()</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "log"
+        "net/url"
+
+        "github.com/hashicorp/terraform/helper/schema"
+)
+
+// Hook is the hook you want to add to a bitbucket repository
+type Hook struct {
+        UUID                 string   `json:"uuid,omitempty"`
+        URL                  string   `json:"url,omitempty"`
+        Description          string   `json:"description,omitempty"`
+        Active               bool     `json:"active,omitempty"`
+        SkipCertVerification bool     `json:"skip_cert_verification,omitempty"`
+        Events               []string `json:"events,omitempty"`
+}
+
+func resourceHook() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceHookCreate,
+                Read:   resourceHookRead,
+                Update: resourceHookUpdate,
+                Delete: resourceHookDelete,
+                Exists: resourceHookExists,
+
+                Schema: map[string]*schema.Schema{
+                        "owner": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "repository": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                                ForceNew: true,
+                        },
+                        "active": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  true,
+                        },
+                        "url": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "uuid": {
+                                Type:     schema.TypeString,
+                                Computed: true,
+                        },
+                        "description": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "events": {
+                                Type:     schema.TypeSet,
+                                Required: true,
+                                Elem:     &amp;schema.Schema{Type: schema.TypeString},
+                                Set:      schema.HashString,
+                        },
+                        "skip_cert_verification": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  true,
+                        },
+                },
+        }
+}</span>
+
+func createHook(d *schema.ResourceData) *Hook <span class="cov0" title="0">{
+
+        events := make([]string, 0, len(d.Get("events").(*schema.Set).List()))
+
+        for _, item := range d.Get("events").(*schema.Set).List() </span><span class="cov0" title="0">{
+                events = append(events, item.(string))
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Hook{
+                URL:                  d.Get("url").(string),
+                Description:          d.Get("description").(string),
+                Active:               d.Get("active").(bool),
+                SkipCertVerification: d.Get("skip_cert_verification").(bool),
+                Events:               events,
+        }</span>
+}
+
+func resourceHookCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        hook := createHook(d)
+
+        payload, err := json.Marshal(hook)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">hookReq, err := client.Post(fmt.Sprintf("2.0/repositories/%s/%s/hooks",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+        ), bytes.NewBuffer(payload))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">body, readerr := ioutil.ReadAll(hookReq.Body)
+        if readerr != nil </span><span class="cov0" title="0">{
+                return readerr
+        }</span>
+
+        <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;hook)
+        if decodeerr != nil </span><span class="cov0" title="0">{
+                return decodeerr
+        }</span>
+
+        <span class="cov0" title="0">d.SetId(hook.UUID)
+
+        return resourceHookRead(d, m)</span>
+}
+func resourceHookRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+
+        hookReq, err := client.Get(fmt.Sprintf("2.0/repositories/%s/%s/hooks/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("ID: %s", url.PathEscape(d.Id()))
+
+        if hookReq.StatusCode == 200 </span><span class="cov0" title="0">{
+                var hook Hook
+
+                body, readerr := ioutil.ReadAll(hookReq.Body)
+                if readerr != nil </span><span class="cov0" title="0">{
+                        return readerr
+                }</span>
+
+                <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;hook)
+                if decodeerr != nil </span><span class="cov0" title="0">{
+                        return decodeerr
+                }</span>
+
+                <span class="cov0" title="0">d.Set("uuid", hook.UUID)
+                d.Set("description", hook.Description)
+                d.Set("active", hook.Active)
+                d.Set("url", hook.URL)
+                d.Set("skip_cert_verification", hook.SkipCertVerification)
+
+                eventsList := make([]string, 0, len(hook.Events))
+
+                for _, event := range hook.Events </span><span class="cov0" title="0">{
+                        eventsList = append(eventsList, event)
+                }</span>
+
+                <span class="cov0" title="0">d.Set("events", eventsList)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func resourceHookUpdate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        hook := createHook(d)
+        payload, err := json.Marshal(hook)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Put(fmt.Sprintf("2.0/repositories/%s/%s/hooks/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ), bytes.NewBuffer(payload))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return resourceHookRead(d, m)</span>
+}
+
+func resourceHookExists(d *schema.ResourceData, m interface{}) (bool, error) <span class="cov0" title="0">{
+        client := m.(*Client)
+        if _, okay := d.GetOk("uuid"); okay </span><span class="cov0" title="0">{
+                hookReq, err := client.Get(fmt.Sprintf("2.0/repositories/%s/%s/hooks/%s",
+                        d.Get("owner").(string),
+                        d.Get("repository").(string),
+                        url.PathEscape(d.Id()),
+                ))
+
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("[DEBUG] Req: %+v, Err: %+v", hookReq, err)
+                        // If the hook was not found, we get the message "is not a valid hook".
+                        // Return nil so we can show that the hook is gone.
+                        if hookReq.StatusCode == 404 </span><span class="cov0" title="0">{
+                                return false, nil
+                        }</span>
+
+                        <span class="cov0" title="0">panic(err)</span>
+                }
+
+                <span class="cov0" title="0">if hookReq.StatusCode != 200 </span><span class="cov0" title="0">{
+                        return false, err
+                }</span>
+
+                <span class="cov0" title="0">return true, nil</span>
+        }
+
+        <span class="cov0" title="0">return false, nil</span>
+
+}
+
+func resourceHookDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        _, err := client.Delete(fmt.Sprintf("2.0/repositories/%s/%s/hooks/%s",
+                d.Get("owner").(string),
+                d.Get("repository").(string),
+                url.PathEscape(d.Id()),
+        ))
+
+        return err
+
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+
+        "github.com/hashicorp/terraform/helper/schema"
+        "strings"
+)
+
+// Project is the project data we need to send to create a project on the bitbucket api
+type Project struct {
+        Key         string `json:"key,omitempty"`
+        IsPrivate   bool   `json:"is_private,omitempty"`
+        Owner       string `json:"owner.username,omitempty"`
+        Description string `json:"description,omitempty"`
+        Name        string `json:"name,omitempty"`
+        UUID        string `json:"uuid,omitempty"`
+}
+
+func resourceProject() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceProjectCreate,
+                Update: resourceProjectUpdate,
+                Read:   resourceProjectRead,
+                Delete: resourceProjectDelete,
+
+                Schema: map[string]*schema.Schema{
+                        "key": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "is_private": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  true,
+                        },
+                        "description": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "owner": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "name": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                },
+        }
+}</span>
+
+func newProjectFromResource(d *schema.ResourceData) *Project <span class="cov0" title="0">{
+        project := &amp;Project{
+                Name:        d.Get("name").(string),
+                IsPrivate:   d.Get("is_private").(bool),
+                Description: d.Get("description").(string),
+                Key:         d.Get("key").(string),
+        }
+
+        return project
+}</span>
+
+func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        project := newProjectFromResource(d)
+
+        var jsonbuffer []byte
+
+        jsonpayload := bytes.NewBuffer(jsonbuffer)
+        enc := json.NewEncoder(jsonpayload)
+        enc.Encode(project)
+
+        var projectKey string
+        projectKey = d.Get("key").(string)
+        if projectKey == "" </span><span class="cov0" title="0">{
+                projectKey = d.Get("key").(string)
+        }</span>
+
+        <span class="cov0" title="0">_, err := client.Put(fmt.Sprintf("2.0/teams/%s/projects/%s",
+                d.Get("owner").(string),
+                projectKey,
+        ), jsonpayload)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return resourceProjectRead(d, m)</span>
+}
+
+func resourceProjectCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        project := newProjectFromResource(d)
+
+        bytedata, err := json.Marshal(project)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">var projectKey string
+        projectKey = d.Get("key").(string)
+        if projectKey == "" </span><span class="cov0" title="0">{
+                projectKey = d.Get("key").(string)
+        }</span>
+
+        <span class="cov0" title="0">owner := d.Get("owner").(string)
+        if owner == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("owner must not be a empty string")
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Post(fmt.Sprintf("2.0/teams/%s/projects/",
+                d.Get("owner").(string),
+        ), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">d.SetId(string(fmt.Sprintf("%s/%s", d.Get("owner").(string), projectKey)))
+
+        return resourceProjectRead(d, m)</span>
+}
+
+func resourceProjectRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        id := d.Id()
+        if id != "" </span><span class="cov0" title="0">{
+                idparts := strings.Split(id, "/")
+                if len(idparts) == 2 </span><span class="cov0" title="0">{
+                        d.Set("owner", idparts[0])
+                        d.Set("key", idparts[1])
+                }</span> else<span class="cov0" title="0"> {
+                        return fmt.Errorf("Incorrect ID format, should match `owner/key`")
+                }</span>
+        }
+
+        <span class="cov0" title="0">var projectKey string
+        projectKey = d.Get("key").(string)
+        if projectKey == "" </span><span class="cov0" title="0">{
+                projectKey = d.Get("key").(string)
+        }</span>
+
+        <span class="cov0" title="0">client := m.(*Client)
+        projectReq, _ := client.Get(fmt.Sprintf("2.0/teams/%s/projects/%s",
+                d.Get("owner").(string),
+                projectKey,
+        ))
+
+        if projectReq.StatusCode == 200 </span><span class="cov0" title="0">{
+
+                var project Project
+
+                body, readerr := ioutil.ReadAll(projectReq.Body)
+                if readerr != nil </span><span class="cov0" title="0">{
+                        return readerr
+                }</span>
+
+                <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;project)
+                if decodeerr != nil </span><span class="cov0" title="0">{
+                        return decodeerr
+                }</span>
+
+                <span class="cov0" title="0">d.Set("key", project.Key)
+                d.Set("is_private", project.IsPrivate)
+                d.Set("name", project.Name)
+                d.Set("description", project.Description)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func resourceProjectDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+
+        var projectKey string
+        projectKey = d.Get("key").(string)
+        if projectKey == "" </span><span class="cov0" title="0">{
+                projectKey = d.Get("key").(string)
+        }</span>
+
+        <span class="cov0" title="0">client := m.(*Client)
+        _, err := client.Delete(fmt.Sprintf("2.0/teams/%s/projects/%s",
+                d.Get("owner").(string),
+                projectKey,
+        ))
+
+        return err</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+
+        "strings"
+
+        "github.com/hashicorp/terraform/helper/schema"
+)
+
+// CloneURL is the internal struct we use to represent urls
+type CloneURL struct {
+        Href string `json:"href,omitempty"`
+        Name string `json:"name,omitempty"`
+}
+
+// PipelinesEnabled is the struct we send to turn on or turn off pipelines for a repository
+type PipelinesEnabled struct {
+        Enabled bool `json:"enabled"`
+}
+
+// Repository is the struct we need to send off to the Bitbucket API to create a repository
+type Repository struct {
+        SCM         string `json:"scm,omitempty"`
+        HasWiki     bool   `json:"has_wiki,omitempty"`
+        HasIssues   bool   `json:"has_issues,omitempty"`
+        Website     string `json:"website,omitempty"`
+        IsPrivate   bool   `json:"is_private,omitempty"`
+        ForkPolicy  string `json:"fork_policy,omitempty"`
+        Language    string `json:"language,omitempty"`
+        Description string `json:"description,omitempty"`
+        Name        string `json:"name,omitempty"`
+        Slug        string `json:"slug,omitempty"`
+        UUID        string `json:"uuid,omitempty"`
+        Project     struct {
+                Key string `json:"key,omitempty"`
+        } `json:"project,omitempty"`
+        Links struct {
+                Clone []CloneURL `json:"clone,omitempty"`
+        } `json:"links,omitempty"`
+}
+
+func resourceRepository() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceRepositoryCreate,
+                Update: resourceRepositoryUpdate,
+                Read:   resourceRepositoryRead,
+                Delete: resourceRepositoryDelete,
+                Importer: &amp;schema.ResourceImporter{
+                        State: schema.ImportStatePassthrough,
+                },
+
+                Schema: map[string]*schema.Schema{
+                        "scm": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                                Default:  "git",
+                        },
+                        "has_wiki": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  false,
+                        },
+                        "has_issues": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  false,
+                        },
+                        "website": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "clone_ssh": {
+                                Type:     schema.TypeString,
+                                Computed: true,
+                        },
+                        "clone_https": {
+                                Type:     schema.TypeString,
+                                Computed: true,
+                        },
+                        "project_key": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "is_private": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  true,
+                        },
+                        "pipelines_enabled": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  false,
+                        },
+                        "fork_policy": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                                Default:  "allow_forks",
+                        },
+                        "language": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "description": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "owner": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "name": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "slug": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                                Computed: true,
+                        },
+                },
+        }
+}</span>
+
+func newRepositoryFromResource(d *schema.ResourceData) *Repository <span class="cov0" title="0">{
+        repo := &amp;Repository{
+                Name:        d.Get("name").(string),
+                Slug:        d.Get("slug").(string),
+                Language:    d.Get("language").(string),
+                IsPrivate:   d.Get("is_private").(bool),
+                Description: d.Get("description").(string),
+                ForkPolicy:  d.Get("fork_policy").(string),
+                HasWiki:     d.Get("has_wiki").(bool),
+                HasIssues:   d.Get("has_issues").(bool),
+                SCM:         d.Get("scm").(string),
+                Website:     d.Get("website").(string),
+        }
+
+        repo.Project.Key = d.Get("project_key").(string)
+        return repo
+}</span>
+
+func resourceRepositoryUpdate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        repository := newRepositoryFromResource(d)
+
+        var jsonbuffer []byte
+
+        jsonpayload := bytes.NewBuffer(jsonbuffer)
+        enc := json.NewEncoder(jsonpayload)
+        enc.Encode(repository)
+
+        var repoSlug string
+        repoSlug = d.Get("slug").(string)
+        if repoSlug == "" </span><span class="cov0" title="0">{
+                repoSlug = d.Get("name").(string)
+        }</span>
+
+        <span class="cov0" title="0">_, err := client.Put(fmt.Sprintf("2.0/repositories/%s/%s",
+                d.Get("owner").(string),
+                repoSlug,
+        ), jsonpayload)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">var pipelinesEnabled bool
+        pipelinesEnabled = d.Get("pipelines_enabled").(bool)
+        pipelinesConfig := &amp;PipelinesEnabled{Enabled: pipelinesEnabled}
+
+        bytedata, err := json.Marshal(pipelinesConfig)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Put(fmt.Sprintf("2.0/repositories/%s/%s/pipelines_config",
+                d.Get("owner").(string),
+                repoSlug), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">return resourceRepositoryRead(d, m)</span>
+}
+
+func resourceRepositoryCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        repo := newRepositoryFromResource(d)
+
+        bytedata, err := json.Marshal(repo)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">var repoSlug string
+        repoSlug = d.Get("slug").(string)
+        if repoSlug == "" </span><span class="cov0" title="0">{
+                repoSlug = d.Get("name").(string)
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Post(fmt.Sprintf("2.0/repositories/%s/%s",
+                d.Get("owner").(string),
+                repoSlug,
+        ), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">d.SetId(string(fmt.Sprintf("%s/%s", d.Get("owner").(string), repoSlug)))
+
+        var pipelinesEnabled bool
+        pipelinesEnabled = d.Get("pipelines_enabled").(bool)
+        pipelinesConfig := &amp;PipelinesEnabled{Enabled: pipelinesEnabled}
+
+        bytedata, err = json.Marshal(pipelinesConfig)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">_, err = client.Put(fmt.Sprintf("2.0/repositories/%s/%s/pipelines_config",
+                d.Get("owner").(string),
+                repoSlug), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return resourceRepositoryRead(d, m)</span>
+}
+func resourceRepositoryRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        id := d.Id()
+        if id != "" </span><span class="cov0" title="0">{
+                idparts := strings.Split(id, "/")
+                if len(idparts) == 2 </span><span class="cov0" title="0">{
+                        d.Set("owner", idparts[0])
+                        d.Set("slug", idparts[1])
+                }</span> else<span class="cov0" title="0"> {
+                        return fmt.Errorf("Incorrect ID format, should match `owner/slug`")
+                }</span>
+        }
+
+        <span class="cov0" title="0">var repoSlug string
+        repoSlug = d.Get("slug").(string)
+        if repoSlug == "" </span><span class="cov0" title="0">{
+                repoSlug = d.Get("name").(string)
+        }</span>
+
+        <span class="cov0" title="0">client := m.(*Client)
+        repoReq, _ := client.Get(fmt.Sprintf("2.0/repositories/%s/%s",
+                d.Get("owner").(string),
+                repoSlug,
+        ))
+
+        if repoReq.StatusCode == 200 </span><span class="cov0" title="0">{
+
+                var repo Repository
+
+                body, readerr := ioutil.ReadAll(repoReq.Body)
+                if readerr != nil </span><span class="cov0" title="0">{
+                        return readerr
+                }</span>
+
+                <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;repo)
+                if decodeerr != nil </span><span class="cov0" title="0">{
+                        return decodeerr
+                }</span>
+
+                <span class="cov0" title="0">d.Set("scm", repo.SCM)
+                d.Set("is_private", repo.IsPrivate)
+                d.Set("has_wiki", repo.HasWiki)
+                d.Set("has_issues", repo.HasIssues)
+                d.Set("name", repo.Name)
+                if repo.Slug != "" &amp;&amp; repo.Name != repo.Slug </span><span class="cov0" title="0">{
+                        d.Set("slug", repo.Slug)
+                }</span>
+                <span class="cov0" title="0">d.Set("language", repo.Language)
+                d.Set("fork_policy", repo.ForkPolicy)
+                d.Set("website", repo.Website)
+                d.Set("description", repo.Description)
+                d.Set("project_key", repo.Project.Key)
+
+                for _, cloneURL := range repo.Links.Clone </span><span class="cov0" title="0">{
+                        if cloneURL.Name == "https" </span><span class="cov0" title="0">{
+                                d.Set("clone_https", cloneURL.Href)
+                        }</span> else<span class="cov0" title="0"> {
+                                d.Set("clone_ssh", cloneURL.Href)
+                        }</span>
+                }
+                <span class="cov0" title="0">pipelinesConfigReq, err := client.Get(fmt.Sprintf("2.0/repositories/%s/%s/pipelines_config",
+                        d.Get("owner").(string),
+                        repoSlug))
+
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if pipelinesConfigReq.StatusCode == 200 </span><span class="cov0" title="0">{
+                        var pipelinesConfig PipelinesEnabled
+
+                        body, readerr := ioutil.ReadAll(pipelinesConfigReq.Body)
+                        if readerr != nil </span><span class="cov0" title="0">{
+                                return readerr
+                        }</span>
+
+                        <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;pipelinesConfig)
+                        if decodeerr != nil </span><span class="cov0" title="0">{
+                                return decodeerr
+                        }</span>
+
+                        <span class="cov0" title="0">d.Set("pipelines_enabled", pipelinesConfig.Enabled)</span>
+                }
+
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func resourceRepositoryDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+
+        var repoSlug string
+        repoSlug = d.Get("slug").(string)
+        if repoSlug == "" </span><span class="cov0" title="0">{
+                repoSlug = d.Get("name").(string)
+        }</span>
+
+        <span class="cov0" title="0">client := m.(*Client)
+        _, err := client.Delete(fmt.Sprintf("2.0/repositories/%s/%s",
+                d.Get("owner").(string),
+                repoSlug,
+        ))
+
+        return err</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package bitbucket
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "log"
+        "net/url"
+
+        "github.com/hashicorp/terraform/helper/schema"
+)
+
+// RepositoryVariable structure for handling key info
+type RepositoryVariable struct {
+        Key     string `json:"key"`
+        Value   string `json:"value"`
+        UUID    string `json:"uuid,omitempty"`
+        Secured bool   `json:"secured"`
+}
+
+func resourceRepositoryVariable() *schema.Resource <span class="cov8" title="1">{
+        return &amp;schema.Resource{
+                Create: resourceRepositoryVariableCreate,
+                Update: resourceRepositoryVariableUpdate,
+                Read:   resourceRepositoryVariableRead,
+                Delete: resourceRepositoryVariableDelete,
+
+                Schema: map[string]*schema.Schema{
+                        "uuid": {
+                                Type:     schema.TypeString,
+                                Computed: true,
+                        },
+                        "key": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "value": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                        "secured": {
+                                Type:     schema.TypeBool,
+                                Optional: true,
+                                Default:  true,
+                        },
+                        "repository": {
+                                Type:     schema.TypeString,
+                                Required: true,
+                        },
+                },
+        }
+}</span>
+
+func newRepositoryVariableFromResource(d *schema.ResourceData) *RepositoryVariable <span class="cov0" title="0">{
+        dk := &amp;RepositoryVariable{
+                Key:     d.Get("key").(string),
+                Value:   d.Get("value").(string),
+                Secured: d.Get("secured").(bool),
+        }
+        return dk
+}</span>
+
+func resourceRepositoryVariableCreate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+
+        client := m.(*Client)
+        rvcr := newRepositoryVariableFromResource(d)
+        bytedata, err := json.Marshal(rvcr)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">req, err := client.Post(fmt.Sprintf("2.0/repositories/%s/pipelines_config/variables/",
+                d.Get("repository").(string),
+        ), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">var rv RepositoryVariable
+
+        body, readerr := ioutil.ReadAll(req.Body)
+        if readerr != nil </span><span class="cov0" title="0">{
+                return readerr
+        }</span>
+
+        <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;rv)
+        if decodeerr != nil </span><span class="cov0" title="0">{
+                return decodeerr
+        }</span>
+        <span class="cov0" title="0">d.Set("uuid", rv.UUID)
+        d.SetId(rv.Key)
+
+        return resourceRepositoryVariableRead(d, m)</span>
+}
+
+func resourceRepositoryVariableRead(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+
+        client := m.(*Client)
+        rvReq, _ := client.Get(fmt.Sprintf("2.0/repositories/%s/pipelines_config/variables/%s",
+                d.Get("repository").(string),
+                d.Get("uuid").(string),
+        ))
+
+        log.Printf("ID: %s", url.PathEscape(d.Id()))
+
+        if rvReq.StatusCode == 200 </span><span class="cov0" title="0">{
+                var rv RepositoryVariable
+                body, readerr := ioutil.ReadAll(rvReq.Body)
+                if readerr != nil </span><span class="cov0" title="0">{
+                        return readerr
+                }</span>
+
+                <span class="cov0" title="0">decodeerr := json.Unmarshal(body, &amp;rv)
+                if decodeerr != nil </span><span class="cov0" title="0">{
+                        return decodeerr
+                }</span>
+
+                <span class="cov0" title="0">d.Set("uuid", rv.UUID)
+                d.Set("key", rv.Key)
+                d.Set("value", rv.Value)
+                d.Set("secured", rv.Secured)</span>
+        }
+
+        <span class="cov0" title="0">if rvReq.StatusCode == 404 </span><span class="cov0" title="0">{
+                d.SetId("")
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func resourceRepositoryVariableUpdate(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        rvcr := newRepositoryVariableFromResource(d)
+        bytedata, err := json.Marshal(rvcr)
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">req, err := client.Put(fmt.Sprintf("2.0/repositories/%s/pipelines_config/variables/%s",
+                d.Get("repository").(string),
+                d.Get("uuid").(string),
+        ), bytes.NewBuffer(bytedata))
+
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if req.StatusCode != 200 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">return resourceRepositoryVariableRead(d, m)</span>
+}
+
+func resourceRepositoryVariableDelete(d *schema.ResourceData, m interface{}) error <span class="cov0" title="0">{
+        client := m.(*Client)
+        _, err := client.Delete(fmt.Sprintf(fmt.Sprintf("2.0/repositories/%s/pipelines_config/variables/%s",
+                d.Get("repository").(string),
+                d.Get("uuid").(string),
+        )))
+        return err
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
