@@ -129,7 +129,7 @@ pipeline{
         stage("Run Terraform"){
             steps{
                 echo "Running terraform files"
-                sh 'cd examples && terraform init'
+                sh 'terraform init'
             }
             post{
                 always{
