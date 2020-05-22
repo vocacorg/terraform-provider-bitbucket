@@ -2,6 +2,7 @@ pipeline{
     agent any
     tools {
         go 'go-1.14.3'
+        terraform 'Terraform'
     }
     environment {
         GO111MODULE = 'on'
@@ -9,34 +10,11 @@ pipeline{
     stages{
         stage("Clone"){
             steps{
+                sh 'terraform --version'
                 echo "Cloning the git repository" + env.BRANCH_NAME
                 git branch: 'master', url: 'https://github.com/vocacorg/terraform-provider-bitbucket.git'
                 echo "Content in working directory"
                 sh "ls -la ."
-            }
-            post{
-                always{
-                    echo "========always========"
-                }
-                success{
-                    echo "========A executed successfully========"
-                }
-                failure{
-                    echo "========A execution failed========"
-                }
-            }
-        }
-        stage("Run Terraform"){
-            steps{
-                script {
-                    def tfHome = tool name: 'Terraform'
-                    env.PATH = "${tfHome}:${env.PATH}"
-                }
-                
-                echo "Running terraform files"
-                sh 'terraform --version'
-                echo "Initialised terraform"
-                
             }
             post{
                 always{
